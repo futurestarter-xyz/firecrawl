@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
+      - PORT=${PORT}
+      - HOST=${HOST}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_RATE_LIMIT_URL=${REDIS_RATE_LIMIT_URL}
+      - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
+    restart: unless-stopped
+
+  # Optional: Include Playwright service if needed
+  playwright:
+    build: 
+      context: .
+      dockerfile: apps/playwright-service/Dockerfile
+    environment:
+      - PORT=3000
+    restart: unless-stopped
