@@ -4,40 +4,19 @@ x-common-service: &common-service
   build: apps/api
   networks:
     - backend
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
 
 services:
   playwright-service:
     build: apps/playwright-service
     environment:
       - PORT=3000
-      - PROXY_SERVER=${PROXY_SERVER}
-      - PROXY_USERNAME=${PROXY_USERNAME}
-      - PROXY_PASSWORD=${PROXY_PASSWORD}
-      - BLOCK_MEDIA=${BLOCK_MEDIA}
       - MAX_TIMEOUT=300000
       - REQUEST_TIMEOUT=300000
-      - WAIT_UNTIL=networkidle
-      - WAIT_FOR_SELECTOR=.property-title
-      - USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     networks:
       - backend
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "3000"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     restart: unless-stopped
     ports:
       - "3000:3000"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
 
   api:
     <<: *common-service
@@ -50,52 +29,22 @@ services:
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       MODEL_PROVIDER: "anthropic"
-      MODEL_NAME: "claude-3-5-haiku-latest"
-      MODEL: "claude-3-5-haiku-latest"
-      LLM_MODEL: "claude-3-5-haiku-latest"
-      ANTHROPIC_MODEL: "claude-3-5-haiku-latest"
+      MODEL_NAME: "claude-2.1"
+      MODEL: "claude-2.1"
+      LLM_MODEL: "claude-2.1"
+      ANTHROPIC_MODEL: "claude-2.1"
       USE_OPENAI: "false"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
-      FLY_PROCESS_GROUP: app
       NODE_ENV: "production"
-      # Bull Board configuration
-      BULL_BOARD_ENABLED: "true"
-      BULL_BOARD_PATH: "/admin"
-      BULL_BOARD_USERNAME: "admin"
-      BULL_BOARD_PASSWORD: "admin"
-      BULL_QUEUE_UI_PATH: "/admin/queues"
-      BULL_QUEUE_UI_PORT: "3002"
-      BULL_PREFIX: "bull"
-      BULL_UI_ENABLED: "true"
-      # Queue configuration
-      QUEUE_PREFIX: "bull"
-      QUEUE_UI_PATH: "/admin/queues"
-      # Timeouts
       REQUEST_TIMEOUT: 300000
       MAX_TIMEOUT: 300000
-      SCRAPE_TIMEOUT: 300000
-      JOB_TIMEOUT: 600000
-      BULL_JOB_TIMEOUT: 600000
-      # Browser config
-      WAIT_UNTIL: networkidle
-      WAIT_FOR_SELECTOR: .property-title
-      USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     depends_on:
-      redis:
-        condition: service_healthy
-      playwright-service:
-        condition: service_started
+      - redis
+      - playwright-service
     ports:
-      - "${PORT:-3002}:3002"
-    command: ["pnpm", "run", "start:production"]
+      - "3002:3002"
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
 
   worker:
     <<: *common-service
@@ -108,73 +57,20 @@ services:
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       MODEL_PROVIDER: "anthropic"
-      MODEL_NAME: "claude-3-5-haiku-latest"
-      MODEL: "claude-3-5-haiku-latest"
-      LLM_MODEL: "claude-3-5-haiku-latest"
-      ANTHROPIC_MODEL: "claude-3-5-haiku-latest"
+      MODEL_NAME: "claude-2.1"
+      MODEL: "claude-2.1"
+      LLM_MODEL: "claude-2.1"
+      ANTHROPIC_MODEL: "claude-2.1"
       USE_OPENAI: "false"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
-      FLY_PROCESS_GROUP: worker
       NODE_ENV: "production"
-      # Queue configuration
-      QUEUE_PREFIX: "bull"
-      QUEUE_UI_PATH: "/admin/queues"
-      # Timeouts
       REQUEST_TIMEOUT: 300000
       MAX_TIMEOUT: 300000
-      SCRAPE_TIMEOUT: 300000
-      JOB_TIMEOUT: 600000
-      BULL_JOB_TIMEOUT: 600000
-      # Browser config
-      WAIT_UNTIL: networkidle
-      WAIT_FOR_SELECTOR: .property-title
-      USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     depends_on:
-      redis:
-        condition: service_healthy
-      playwright-service:
-        condition: service_started
-    command: ["pnpm", "run", "workers"]
+      - redis
+      - playwright-service
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
-
-  bull-board:
-    image: deadly0/bull-board
-    environment:
-      # Redis connection
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ""
-      REDIS_URL: "redis://redis:6379"
-      # Bull configuration
-      BULL_PREFIX: "bull"
-      QUEUE_PREFIX: "bull"
-      BULL_BOARD_ENABLED: "true"
-      # Server configuration
-      PORT: 3003
-      BASE_PATH: ""
-      UI_PATH: "/queues"
-      # Auth
-      BULL_BOARD_USERNAME: "admin"
-      BULL_BOARD_PASSWORD: "admin"
-    ports:
-      - "3003:3003"
-    networks:
-      - backend
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.bullboard.rule=PathPrefix(`/queues`)"
-      - "traefik.http.services.bullboard.loadbalancer.server.port=3003"
 
   redis:
     image: redis:alpine
@@ -183,11 +79,6 @@ services:
     command: redis-server --appendonly yes --bind 0.0.0.0
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     restart: unless-stopped
 
 networks:
