@@ -4,16 +4,28 @@ x-common-service: &common-service
   build: apps/api
   networks:
     - backend
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
 
 services:
   playwright-service:
     build: apps/playwright-service
     environment:
       - PORT=3000
-      - MAX_TIMEOUT=300000
-      - REQUEST_TIMEOUT=300000
+      - PROXY_SERVER=${PROXY_SERVER}
+      - PROXY_USERNAME=${PROXY_USERNAME}
+      - PROXY_PASSWORD=${PROXY_PASSWORD}
+      - BLOCK_MEDIA=${BLOCK_MEDIA}
+      - MAX_TIMEOUT=120000
+      - REQUEST_TIMEOUT=120000
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -29,21 +41,32 @@ services:
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       MODEL_PROVIDER: "anthropic"
-      MODEL_NAME: "claude-3-haiku-latest"
-      MODEL: "claude-3-haiku-latest"
-      LLM_MODEL: "claude-3-haiku-latest"
-      ANTHROPIC_MODEL: "claude-3-haiku-latest"
       USE_OPENAI: "false"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
+      FLY_PROCESS_GROUP: app
       NODE_ENV: "production"
-      REQUEST_TIMEOUT: 300000
-      MAX_TIMEOUT: 300000
+      BULL_BOARD_BASE_URL: "/admin"
+      BULL_BOARD_USERNAME: "admin"
+      BULL_BOARD_PASSWORD: "admin"
+      BULL_QUEUE_UI_PATH: "/admin/queues"
+      BULL_QUEUE_UI_PORT: "3002"
+      BULL_PREFIX: "bull"
+      BULL_UI_ENABLED: "true"
+      BULL_UI_PATH: "/admin/queues"
+      REQUEST_TIMEOUT: 120000
+      MAX_TIMEOUT: 120000
+      SCRAPE_TIMEOUT: 120000
+      JOB_TIMEOUT: 300000
+      BULL_JOB_TIMEOUT: 300000
     depends_on:
-      - redis
-      - playwright-service
+      redis:
+        condition: service_healthy
+      playwright-service:
+        condition: service_started
     ports:
       - "3002:3002"
+    command: ["pnpm", "run", "start:production"]
     restart: unless-stopped
 
   worker:
@@ -57,20 +80,47 @@ services:
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       MODEL_PROVIDER: "anthropic"
-      MODEL_NAME: "claude-3-haiku-latest"
-      MODEL: "claude-3-haiku-latest"
-      LLM_MODEL: "claude-3-haiku-latest"
-      ANTHROPIC_MODEL: "claude-3-haiku-latest"
       USE_OPENAI: "false"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
+      FLY_PROCESS_GROUP: worker
       NODE_ENV: "production"
-      REQUEST_TIMEOUT: 300000
-      MAX_TIMEOUT: 300000
+      REQUEST_TIMEOUT: 120000
+      MAX_TIMEOUT: 120000
+      SCRAPE_TIMEOUT: 120000
+      JOB_TIMEOUT: 300000
+      BULL_JOB_TIMEOUT: 300000
     depends_on:
-      - redis
-      - playwright-service
+      redis:
+        condition: service_healthy
+      playwright-service:
+        condition: service_started
+    command: ["pnpm", "run", "workers"]
     restart: unless-stopped
+
+  bull-board:
+    image: deadly0/bull-board
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_URL: "redis://redis:6379"
+      BULL_PREFIX: "bull"
+      PORT: 3000
+      BASE_PATH: ""
+    ports:
+      - "3003:3000"
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   redis:
     image: redis:alpine
@@ -79,6 +129,11 @@ services:
     command: redis-server --appendonly yes --bind 0.0.0.0
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 networks:
