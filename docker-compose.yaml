@@ -18,16 +18,22 @@ services:
       - BLOCK_MEDIA=${BLOCK_MEDIA}
     networks:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   api:
     <<: *common-service
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      REDIS_RATE_LIMIT_URL: ${REDIS_URL:-redis://redis:6379}
-      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
-      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION}
+      REDIS_URL: redis://redis:6379
+      REDIS_RATE_LIMIT_URL: redis://redis:6379
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
+      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false}
       PORT: ${PORT:-3002}
-      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE}
+      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_NAME: ${MODEL_NAME:-gpt-4o}
@@ -44,24 +50,27 @@ services:
       SCRAPING_BEE_API_KEY: ${SCRAPING_BEE_API_KEY}
       HOST: ${HOST:-0.0.0.0}
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
-      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      LOGGING_LEVEL: ${LOGGING_LEVEL:-info}
       FLY_PROCESS_GROUP: app
     depends_on:
-      - redis
-      - playwright-service
+      redis:
+        condition: service_healthy
+      playwright-service:
+        condition: service_healthy
     ports:
-      - "3002:3002"
-    command: [ "pnpm", "run", "start:production" ]
+      - "${PORT:-3002}:3002"
+    command: ["pnpm", "run", "start:production"]
+    restart: unless-stopped
 
   worker:
     <<: *common-service
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      REDIS_RATE_LIMIT_URL: ${REDIS_URL:-redis://redis:6379}
-      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
-      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION}
+      REDIS_URL: redis://redis:6379
+      REDIS_RATE_LIMIT_URL: redis://redis:6379
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
+      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false}
       PORT: ${PORT:-3002}
-      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE}
+      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_NAME: ${MODEL_NAME:-gpt-4o}
@@ -78,20 +87,33 @@ services:
       SCRAPING_BEE_API_KEY: ${SCRAPING_BEE_API_KEY}
       HOST: ${HOST:-0.0.0.0}
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
-      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      LOGGING_LEVEL: ${LOGGING_LEVEL:-info}
       FLY_PROCESS_GROUP: worker
     depends_on:
-      - redis
-      - playwright-service
-      - api
-    command: [ "pnpm", "run", "workers" ]
+      redis:
+        condition: service_healthy
+      playwright-service:
+        condition: service_healthy
+    command: ["pnpm", "run", "workers"]
+    restart: unless-stopped
 
   redis:
     image: redis:alpine
     networks:
       - backend
-    command: redis-server --bind 0.0.0.0
+    command: redis-server --appendonly yes --bind 0.0.0.0
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
 networks:
   backend:
     driver: bridge
+
+volumes:
+  redis_data:
