@@ -16,8 +16,11 @@ services:
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
       - BLOCK_MEDIA=${BLOCK_MEDIA}
-      - MAX_TIMEOUT=120000
-      - REQUEST_TIMEOUT=120000
+      - MAX_TIMEOUT=300000
+      - REQUEST_TIMEOUT=300000
+      - WAIT_UNTIL=networkidle
+      - WAIT_FOR_SELECTOR=.property-title
+      - USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     networks:
       - backend
     healthcheck:
@@ -29,6 +32,12 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   api:
     <<: *common-service
@@ -59,11 +68,15 @@ services:
       QUEUE_PREFIX: "bull"
       QUEUE_UI_PATH: "/admin/queues"
       # Timeouts
-      REQUEST_TIMEOUT: 120000
-      MAX_TIMEOUT: 120000
-      SCRAPE_TIMEOUT: 120000
-      JOB_TIMEOUT: 300000
-      BULL_JOB_TIMEOUT: 300000
+      REQUEST_TIMEOUT: 300000
+      MAX_TIMEOUT: 300000
+      SCRAPE_TIMEOUT: 300000
+      JOB_TIMEOUT: 600000
+      BULL_JOB_TIMEOUT: 600000
+      # Browser config
+      WAIT_UNTIL: networkidle
+      WAIT_FOR_SELECTOR: .property-title
+      USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     depends_on:
       redis:
         condition: service_healthy
@@ -73,6 +86,12 @@ services:
       - "3002:3002"
     command: ["pnpm", "run", "start:production"]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   worker:
     <<: *common-service
@@ -94,11 +113,15 @@ services:
       QUEUE_PREFIX: "bull"
       QUEUE_UI_PATH: "/admin/queues"
       # Timeouts
-      REQUEST_TIMEOUT: 120000
-      MAX_TIMEOUT: 120000
-      SCRAPE_TIMEOUT: 120000
-      JOB_TIMEOUT: 300000
-      BULL_JOB_TIMEOUT: 300000
+      REQUEST_TIMEOUT: 300000
+      MAX_TIMEOUT: 300000
+      SCRAPE_TIMEOUT: 300000
+      JOB_TIMEOUT: 600000
+      BULL_JOB_TIMEOUT: 600000
+      # Browser config
+      WAIT_UNTIL: networkidle
+      WAIT_FOR_SELECTOR: .property-title
+      USER_AGENT: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
     depends_on:
       redis:
         condition: service_healthy
@@ -106,6 +129,12 @@ services:
         condition: service_started
     command: ["pnpm", "run", "workers"]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   bull-board:
     image: deadly0/bull-board
