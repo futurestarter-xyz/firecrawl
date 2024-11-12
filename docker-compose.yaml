@@ -46,14 +46,19 @@ services:
       LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: app
       NODE_ENV: "production"
-      BULL_BOARD_BASE_URL: "/admin"
+      # Bull Board configuration
+      BULL_BOARD_ENABLED: "true"
+      BULL_BOARD_PATH: "/admin"
       BULL_BOARD_USERNAME: "admin"
       BULL_BOARD_PASSWORD: "admin"
       BULL_QUEUE_UI_PATH: "/admin/queues"
       BULL_QUEUE_UI_PORT: "3002"
       BULL_PREFIX: "bull"
       BULL_UI_ENABLED: "true"
-      BULL_UI_PATH: "/admin/queues"
+      # Queue configuration
+      QUEUE_PREFIX: "bull"
+      QUEUE_UI_PATH: "/admin/queues"
+      # Timeouts
       REQUEST_TIMEOUT: 120000
       MAX_TIMEOUT: 120000
       SCRAPE_TIMEOUT: 120000
@@ -85,6 +90,10 @@ services:
       LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: worker
       NODE_ENV: "production"
+      # Queue configuration
+      QUEUE_PREFIX: "bull"
+      QUEUE_UI_PATH: "/admin/queues"
+      # Timeouts
       REQUEST_TIMEOUT: 120000
       MAX_TIMEOUT: 120000
       SCRAPE_TIMEOUT: 120000
@@ -101,13 +110,22 @@ services:
   bull-board:
     image: deadly0/bull-board
     environment:
+      # Redis connection
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ""
       REDIS_URL: "redis://redis:6379"
+      # Bull configuration
       BULL_PREFIX: "bull"
+      QUEUE_PREFIX: "bull"
+      BULL_BOARD_ENABLED: "true"
+      # Server configuration
       PORT: 3000
       BASE_PATH: ""
+      UI_PATH: "/admin/queues"
+      # Auth
+      BULL_BOARD_USERNAME: "admin"
+      BULL_BOARD_PASSWORD: "admin"
     ports:
       - "3003:3000"
     networks:
@@ -116,11 +134,10 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bullboard.rule=PathPrefix(`/admin/queues`)"
+      - "traefik.http.services.bullboard.loadbalancer.server.port=3000"
 
   redis:
     image: redis:alpine
