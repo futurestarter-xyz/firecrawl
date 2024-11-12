@@ -16,6 +16,8 @@ services:
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
       - BLOCK_MEDIA=${BLOCK_MEDIA}
+      - MAX_TIMEOUT=120000
+      - REQUEST_TIMEOUT=120000
     networks:
       - backend
     healthcheck:
@@ -52,6 +54,11 @@ services:
       BULL_PREFIX: "bull"
       BULL_UI_ENABLED: "true"
       BULL_UI_PATH: "/admin/queues"
+      REQUEST_TIMEOUT: 120000
+      MAX_TIMEOUT: 120000
+      SCRAPE_TIMEOUT: 120000
+      JOB_TIMEOUT: 300000
+      BULL_JOB_TIMEOUT: 300000
     depends_on:
       redis:
         condition: service_healthy
@@ -78,6 +85,11 @@ services:
       LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: worker
       NODE_ENV: "production"
+      REQUEST_TIMEOUT: 120000
+      MAX_TIMEOUT: 120000
+      SCRAPE_TIMEOUT: 120000
+      JOB_TIMEOUT: 300000
+      BULL_JOB_TIMEOUT: 300000
     depends_on:
       redis:
         condition: service_healthy
