@@ -39,6 +39,8 @@ services:
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       MODEL_NAME: "claude-3-haiku-20240307"
+      MODEL: "claude-3-haiku-20240307"
+      LLM_MODEL: "claude-3-haiku-20240307"
       MODEL_PROVIDER: "anthropic"
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
       LLAMAPARSE_API_KEY: ${LLAMAPARSE_API_KEY}
@@ -73,14 +75,6 @@ services:
       - "3002:3002"
     command: ["pnpm", "run", "start:production"]
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   worker:
     <<: *common-service
@@ -117,47 +111,36 @@ services:
         condition: service_started
     command: ["pnpm", "run", "workers"]
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   bull-board:
     image: deadly0/bull-board
     environment:
-      REDIS_URL: redis://redis:6379
-      BULL_PREFIX: bull
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_URL: "redis://redis:6379"
+      BULL_PREFIX: "bull"
       PORT: 3000
+      BASE_PATH: ""
     ports:
       - "3003:3000"
     networks:
       - backend
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.2'
-          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   redis:
     image: redis:alpine
     networks:
       - backend
-    command: >
-      redis-server 
-      --appendonly yes 
-      --bind 0.0.0.0
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --bind 0.0.0.0
     volumes:
       - redis_data:/data
     healthcheck:
@@ -181,3 +164,4 @@ networks:
 
 volumes:
   redis_data:
+    driver: local
