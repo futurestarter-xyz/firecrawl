@@ -25,14 +25,16 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    ports:
+      - "3000:3000"
 
   api:
     <<: *common-service
     environment:
       REDIS_URL: redis://redis:6379
       REDIS_RATE_LIMIT_URL: redis://redis:6379
-      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
-      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false}
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000/scrape
+      USE_DB_AUTHENTICATION: "false"
       PORT: ${PORT:-3002}
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -41,7 +43,7 @@ services:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
       LLAMAPARSE_API_KEY: ${LLAMAPARSE_API_KEY}
       LOGTAIL_KEY: ${LOGTAIL_KEY}
-      BULL_AUTH_KEY: ${BULL_AUTH_KEY}
+      BULL_AUTH_KEY: "@"
       TEST_API_KEY: ${TEST_API_KEY}
       POSTHOG_API_KEY: ${POSTHOG_API_KEY}
       POSTHOG_HOST: ${POSTHOG_HOST}
@@ -49,17 +51,18 @@ services:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_TOKEN: ${SUPABASE_SERVICE_TOKEN}
       SCRAPING_BEE_API_KEY: ${SCRAPING_BEE_API_KEY}
-      HOST: ${HOST:-0.0.0.0}
+      HOST: "0.0.0.0"
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
-      LOGGING_LEVEL: ${LOGGING_LEVEL:-info}
+      LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: app
+      NODE_ENV: "production"
     depends_on:
       redis:
         condition: service_healthy
       playwright-service:
         condition: service_started
     ports:
-      - "${PORT:-3002}:3002"
+      - "3002:3002"
     command: ["pnpm", "run", "start:production"]
     restart: unless-stopped
 
@@ -68,8 +71,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       REDIS_RATE_LIMIT_URL: redis://redis:6379
-      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
-      USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false}
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000/scrape
+      USE_DB_AUTHENTICATION: "false"
       PORT: ${PORT:-3002}
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -78,7 +81,7 @@ services:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
       LLAMAPARSE_API_KEY: ${LLAMAPARSE_API_KEY}
       LOGTAIL_KEY: ${LOGTAIL_KEY}
-      BULL_AUTH_KEY: ${BULL_AUTH_KEY}
+      BULL_AUTH_KEY: "@"
       TEST_API_KEY: ${TEST_API_KEY}
       POSTHOG_API_KEY: ${POSTHOG_API_KEY}
       POSTHOG_HOST: ${POSTHOG_HOST}
@@ -86,10 +89,11 @@ services:
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_SERVICE_TOKEN: ${SUPABASE_SERVICE_TOKEN}
       SCRAPING_BEE_API_KEY: ${SCRAPING_BEE_API_KEY}
-      HOST: ${HOST:-0.0.0.0}
+      HOST: "0.0.0.0"
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
-      LOGGING_LEVEL: ${LOGGING_LEVEL:-info}
+      LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: worker
+      NODE_ENV: "production"
     depends_on:
       redis:
         condition: service_healthy
@@ -97,12 +101,25 @@ services:
         condition: service_started
     command: ["pnpm", "run", "workers"]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   redis:
     image: redis:alpine
     networks:
       - backend
-    command: redis-server --appendonly yes --bind 0.0.0.0
+    command: >
+      redis-server 
+      --appendonly yes 
+      --bind 0.0.0.0
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -111,6 +128,14 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
 
 networks:
   backend:
