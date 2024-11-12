@@ -56,6 +56,14 @@ services:
       LOGGING_LEVEL: "debug"
       FLY_PROCESS_GROUP: app
       NODE_ENV: "production"
+      BULL_BOARD_BASE_URL: "/admin"
+      BULL_BOARD_USERNAME: "admin"
+      BULL_BOARD_PASSWORD: "admin"
+      BULL_QUEUE_UI_PATH: "/admin/queues"
+      BULL_QUEUE_UI_PORT: "3002"
+      BULL_PREFIX: "bull"
+      BULL_UI_ENABLED: "true"
+      BULL_UI_PATH: "/admin/queues"
     depends_on:
       redis:
         condition: service_healthy
@@ -65,6 +73,14 @@ services:
       - "3002:3002"
     command: ["pnpm", "run", "start:production"]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   worker:
     <<: *common-service
@@ -109,6 +125,28 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  bull-board:
+    image: deadly0/bull-board
+    environment:
+      REDIS_URL: redis://redis:6379
+      BULL_PREFIX: bull
+      PORT: 3000
+    ports:
+      - "3003:3000"
+    networks:
+      - backend
+    depends_on:
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
 
   redis:
     image: redis:alpine
