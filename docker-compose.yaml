@@ -42,9 +42,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_PROVIDER: "openai"
-      MODEL_NAME: "gpt-4"
-      MODEL: "gpt-4"
-      LLM_MODEL: "gpt-4"
+      MODEL_NAME: "gpt-3.5-turbo"
+      MODEL: "gpt-3.5-turbo"
+      LLM_MODEL: "gpt-3.5-turbo"
       USE_OPENAI: "true"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
@@ -87,9 +87,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_PROVIDER: "openai"
-      MODEL_NAME: "gpt-4"
-      MODEL: "gpt-4"
-      LLM_MODEL: "gpt-4"
+      MODEL_NAME: "gpt-3.5-turbo"
+      MODEL: "gpt-3.5-turbo"
+      LLM_MODEL: "gpt-3.5-turbo"
       USE_OPENAI: "true"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
