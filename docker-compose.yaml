@@ -42,9 +42,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_PROVIDER: "openai"
-      MODEL_NAME: "gpt-4o-mini"
-      MODEL: "gpt-4o-mini"
-      LLM_MODEL: "gpt-4o-mini"
+      MODEL_NAME: "gpt-4-0613"
+      MODEL: "gpt-4-0613"
+      LLM_MODEL: "gpt-4-0613"
       USE_OPENAI: "true"
       HOST: "0.0.0.0"
       LOGGING_LEVEL: "debug"
